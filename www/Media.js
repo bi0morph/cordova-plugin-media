@@ -131,6 +131,12 @@ Media.prototype.startRecord = function() {
     exec(null, this.errorCallback, "Media", "startRecordingAudio", [this.id, this.src]);
 };
 
+/**
+ * Stop recording audio file.
+ */
+Media.prototype.stopRecord = function() {
+    exec(null, this.errorCallback, "Media", "stopRecordingAudio", [this.id]);
+};
 
 /**
  * Pause recording audio file.
@@ -144,15 +150,6 @@ Media.prototype.pauseRecord = function() {
 */
 Media.prototype.resumeRecord = function() {
     exec(null, this.errorCallback, "Media", "resumeRecordingAudio", [this.id]);
-};
-
-
-
-/**
- * Stop recording audio file.
- */
-Media.prototype.stopRecord = function() {
-    exec(null, this.errorCallback, "Media", "stopRecordingAudio", [this.id]);
 };
 
 /**

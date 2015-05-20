@@ -202,6 +202,20 @@ Media.prototype.stopRecord = function() {
 };
 
 /**
+ * Start recording audio file.
+ */
+Media.prototype.pauseRecord = function() {
+    Media.onStatus(this.id, Media.MEDIA_ERROR, "Not supported");
+};
+
+/**
+ * Start recording audio file.
+ */
+Media.prototype.resumeRecord = function() {
+    Media.onStatus(this.id, Media.MEDIA_ERROR, "Not supported");
+};
+
+/**
  * Release the resources.
  */
 Media.prototype.release = function() {
