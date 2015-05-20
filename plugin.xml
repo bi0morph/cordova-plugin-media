@@ -58,6 +58,10 @@ id="cordova-plugin-media"
         <source-file src="src/android/AudioHandler.java" target-dir="src/org/apache/cordova/media" />
         <source-file src="src/android/AudioPlayer.java" target-dir="src/org/apache/cordova/media" />
         <source-file src="src/android/FileHelper.java" target-dir="src/org/apache/cordova/media" />
+        
+        <source-file src="src/android/ApiHelper.java" target-dir="src/org/apache/cordova/media" />
+        <source-file src="src/android/Mp4ParserWrapper.java" target-dir="src/org/apache/cordova/media" />
+        <source-file src="src/android/AudioRecorder.java" target-dir="src/org/apache/cordova/media" />
      </platform>
      
      <!-- amazon-fireos -->

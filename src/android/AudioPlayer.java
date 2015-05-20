@@ -24,6 +24,7 @@ import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.media.MediaRecorder;
+
 import android.os.Environment;
 import android.util.Log;
 
@@ -34,6 +35,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
+import com.github.lassana.recorder.AudioRecorder;
 /**
  * This class implements the audio playback and recording capabilities used by Cordova.
  * It is called by the AudioHandler Cordova class.
@@ -43,7 +45,7 @@ import java.io.IOException;
  *      android_asset:      file name must start with /android_asset/sound.mp3
  *      sdcard:             file name is just sound.mp3
  */
-public class AudioPlayer implements OnCompletionListener, OnPreparedListener, OnErrorListener {
+public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener {
 
     // AudioPlayer modes
     public enum MODE { NONE, PLAY, RECORD };
@@ -72,6 +74,11 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
 //    private static int MEDIA_ERR_DECODE         = 3;
 //    private static int MEDIA_ERR_NONE_SUPPORTED = 4;
 
+   /* private int bufferSize = 0;
+    private Thread recordingThread = null;
+    private boolean isRecording = false;
+    private boolean isPause = false;
+*/
     private AudioHandler handler;           // The AudioHandler object
     private String id;                      // The id of this player (used to identify Media object in JavaScript)
     private MODE mode = MODE.NONE;          // Playback or Recording mode
@@ -80,51 +87,38 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
     private String audioFile = null;        // File name to play or record to
     private float duration = -1;            // Duration of audio
 
-    private MediaRecorder recorder = null;  // Audio recording object
-    private String tempFile = null;         // Temporary recording file name
+    /*private AudioRecord recorder = null;  // Audio recording object
+    private String tempFileRaw = null;         // Temporary recording file name
+    private String tempFileWav = null;         // Temporary recording file name
 
-    private MediaPlayer player = null;      // Audio player object
-    private boolean prepareOnly = true;     // playback after file prepare flag
+    private boolean recordPaused = false;     // playback after file prepare flag
+*/
+    private boolean prepareOnly = true;     // playback after file prepare flag*//*
     private int seekOnPrepared = 0;     // seek to this location once media is prepared
+    private MediaPlayer player = null;
 
-    /**
-     * Constructor.
-     *
-     * @param handler           The audio handler object
-     * @param id                The id of this audio player
-     */
+
+
+
+    private AudioRecorder mAudioRecorder;
+    private String mActiveRecordFileName;
+
     public AudioPlayer(AudioHandler handler, String id, String file) {
         this.handler = handler;
         this.id = id;
         this.audioFile = file;
-        this.recorder = new MediaRecorder();
-
-        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            this.tempFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/tmprecording.m4a";
-        } else {
-            this.tempFile = "/data/data/" + handler.cordova.getActivity().getPackageName() + "/cache/tmprecording.m4a";
-        }
-
+        mAudioRecorder = AudioRecorder.build(this.handler.cordova.getActivity(), file);
     }
+
+
 
     /**
      * Destroy player and stop audio playing or recording.
      */
     public void destroy() {
         // Stop any play or record
-        if (this.player != null) {
-            if ((this.state == STATE.MEDIA_RUNNING) || (this.state == STATE.MEDIA_PAUSED)) {
-                this.player.stop();
-                this.setState(STATE.MEDIA_STOPPED);
-            }
-            this.player.release();
-            this.player = null;
-        }
-        if (this.recorder != null) {
-            this.stopRecording();
-            this.recorder.release();
-            this.recorder = null;
-        }
+        stopRecording();
+        mAudioRecorder = null;
     }
 
     /**
@@ -132,81 +126,69 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
      *
      * @param file              The name of the file
      */
-    public void startRecording(String file) {
+    public void startRecording(final String file) {
         switch (this.mode) {
         case PLAY:
             Log.d(LOG_TAG, "AudioPlayer Error: Can't record in play mode.");
             sendErrorStatus(MEDIA_ERR_ABORTED);
             break;
         case NONE:
-            this.audioFile = file;
-            this.recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            this.recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4); // MP4);
-            this.recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC); //AAC);
-            this.recorder.setAudioSamplingRate(44100);
-            this.recorder.setAudioChannels(1);
-            this.recorder.setAudioEncodingBitRate(32000);
-            this.recorder.setOutputFile(this.tempFile);
-            try {
-                this.recorder.prepare();
-                this.recorder.start();
-                this.setState(STATE.MEDIA_RUNNING);
-                return;
-            } catch (IllegalStateException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            sendErrorStatus(MEDIA_ERR_ABORTED);
-            break;
+            start(file);
+            return;
         case RECORD:
             Log.d(LOG_TAG, "AudioPlayer Error: Already recording.");
             sendErrorStatus(MEDIA_ERR_ABORTED);
+            break;
         }
     }
 
-    /**
-     * Save temporary recorded file to specified name
-     *
-     * @param file
-     */
-    public void moveFile(String file) {
-        /* this is a hack to save the file as the specified name */
-        File f = new File(this.tempFile);
-
-        if (!file.startsWith("/")) {
-            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                file = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + file;
-            } else {
-                file = "/data/data/" + handler.cordova.getActivity().getPackageName() + "/cache/" + file;
+    private void start(String file) {
+        this.audioFile = file;
+        if (mAudioRecorder == null)
+            mAudioRecorder = AudioRecorder.build(this.handler.cordova.getActivity(), file);
+        mAudioRecorder.start(new AudioRecorder.OnStartListener() {
+            @Override
+            public void onStarted() {
             }
-        }
 
-        String logMsg = "renaming " + this.tempFile + " to " + file;
-        Log.d(LOG_TAG, logMsg);
-        if (!f.renameTo(new File(file))) Log.e(LOG_TAG, "FAILED " + logMsg);
+            @Override
+            public void onException(Exception e) {
+            }
+        });
     }
 
+    private void pause() {
+        if (mAudioRecorder != null)
+        mAudioRecorder.pause(new AudioRecorder.OnPauseListener() {
+            @Override
+            public void onPaused(String activeRecordFileName) {
+                mActiveRecordFileName = activeRecordFileName;
+            }
+
+            @Override
+            public void onException(Exception e) {
+            }
+        });
+    }
+
+    public void resumeRecording(){
+        start(this.audioFile);
+        this.setState(STATE.MEDIA_STARTING);
+    }
+
+    public void pauseRecording(){
+        pause();
+        this.setState(STATE.MEDIA_PAUSED);
+    }
     /**
      * Stop recording and save to the file specified when recording started.
      */
     public void stopRecording() {
-        if (this.recorder != null) {
-            try{
-                if (this.state == STATE.MEDIA_RUNNING) {
-                    this.recorder.stop();
-                    this.setState(STATE.MEDIA_STOPPED);
-                }
-                this.recorder.reset();
-                this.moveFile(this.audioFile);
-            }
-            catch (Exception e) {
-                e.printStackTrace();
-            }
+        if(null != mAudioRecorder){
+            mAudioRecorder = null;
+            this.setState(STATE.MEDIA_STOPPED);
         }
     }
-
     //==========================================================================
     // Playback
     //==========================================================================
@@ -325,7 +307,7 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
     public float getDuration(String file) {
 
         // Can't get duration of recording
-        if (this.recorder != null) {
+        if (this.mAudioRecorder != null) {
             return (-2); // not allowed
         }
 
@@ -421,7 +403,7 @@ public class AudioPlayer implements OnCompletionListener, OnPreparedListener, On
     private void setMode(MODE mode) {
         if (this.mode != mode) {
             //mode is not part of the expected behavior, so no notification
-            //this.handler.webView.sendJavascript("cordova.require('cordova-plugin-media.Media').onStatus('" + this.id + "', " + MEDIA_STATE + ", " + mode + ");");
+            //this.handler.webView.sendJavascript("cordova.require('org.apache.cordova.media.Media').onStatus('" + this.id + "', " + MEDIA_STATE + ", " + mode + ");");
         }
         this.mode = mode;
     }
