@@ -18,22 +18,21 @@
 */
 package org.apache.cordova.media;
 
-import org.apache.cordova.CallbackContext;
-import org.apache.cordova.CordovaPlugin;
-import org.apache.cordova.CordovaResourceApi;
-
 import android.content.Context;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.util.Log;
+import android.widget.Toast;
 
-import java.util.ArrayList;
-
+import org.apache.cordova.CordovaResourceApi;
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -59,6 +58,7 @@ public class AudioHandler extends CordovaPlugin {
      * Constructor.
      */
     public AudioHandler() {
+        Log.d(TAG, "Constructor");
         this.players = new HashMap<String, AudioPlayer>();
         this.pausedForPhone = new ArrayList<AudioPlayer>();
     }
@@ -248,6 +248,7 @@ public class AudioHandler extends CordovaPlugin {
      * @param file              The name of the file
      */
     public void startRecordingAudio(String id, String file) {
+        Toast.makeText(this.cordova.getActivity(), "Yesss", Toast.LENGTH_LONG).show();
         AudioPlayer audio = getOrCreatePlayer(id, file);
         audio.startRecording(file);
     }

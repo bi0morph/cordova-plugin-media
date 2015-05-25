@@ -111,6 +111,7 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
         this.id = id;
         this.audioFile = path + file;
         this.mAudioRecorder = AudioRecorder.build(this.handler.cordova.getActivity(), audioFile);
+        Log.d(LOG_TAG, "Constructor");
     }
 
 

@@ -59,9 +59,9 @@ id="cordova-plugin-media"
         <source-file src="src/android/AudioPlayer.java" target-dir="src/org/apache/cordova/media" />
         <source-file src="src/android/FileHelper.java" target-dir="src/org/apache/cordova/media" />
         
-        <source-file src="src/android/ApiHelper.java" target-dir="src/org/apache/cordova/media" />
-        <source-file src="src/android/Mp4ParserWrapper.java" target-dir="src/org/apache/cordova/media" />
-        <source-file src="src/android/AudioRecorder.java" target-dir="src/org/apache/cordova/media" />
+        <source-file src="src/android/aspectjrt-1.8.0.jar" target-dir="libs" />
+        <source-file src="src/android/isoparser-1.0.2.jar" target-dir="libs" />
+        <source-file src="src/android/recorder.jar" target-dir="libs" />
      </platform>
      
      <!-- amazon-fireos -->
