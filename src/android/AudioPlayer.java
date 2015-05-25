@@ -20,13 +20,10 @@ package org.apache.cordova.media;
 
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnErrorListener;
-import android.media.MediaPlayer.OnPreparedListener;
-import android.media.MediaRecorder;
-
 import android.os.Environment;
 import android.util.Log;
+
+import com.github.lassana.recorder.AudioRecorder;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,8 +31,6 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-
-import com.github.lassana.recorder.AudioRecorder;
 /**
  * This class implements the audio playback and recording capabilities used by Cordova.
  * It is called by the AudioHandler Cordova class.
@@ -102,12 +97,20 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
 
     private AudioRecorder mAudioRecorder;
     private String mActiveRecordFileName;
-
+    public static String path;
     public AudioPlayer(AudioHandler handler, String id, String file) {
+
+        if (!file.startsWith("/")) {
+            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+                path = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator;
+            } else {
+                path = "/data/data/" + handler.cordova.getActivity().getPackageName() + "/cache/";
+            }
+        }
         this.handler = handler;
         this.id = id;
-        this.audioFile = file;
-        mAudioRecorder = AudioRecorder.build(this.handler.cordova.getActivity(), file);
+        this.audioFile = path + file;
+        this.mAudioRecorder = AudioRecorder.build(this.handler.cordova.getActivity(), audioFile);
     }
 
 
@@ -117,8 +120,8 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
      */
     public void destroy() {
         // Stop any play or record
-        stopRecording();
-        mAudioRecorder = null;
+        this.stopRecording();
+        this.mAudioRecorder = null;
     }
 
     /**
@@ -133,7 +136,11 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
             sendErrorStatus(MEDIA_ERR_ABORTED);
             break;
         case NONE:
-            start(file);
+            Log.d(LOG_TAG, "NONE");
+            File newFile = new File(audioFile);
+            if (newFile.exists())
+                newFile.delete();
+            this.start();
             return;
         case RECORD:
             Log.d(LOG_TAG, "AudioPlayer Error: Already recording.");
@@ -142,13 +149,13 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
         }
     }
 
-    private void start(String file) {
-        this.audioFile = file;
-        if (mAudioRecorder == null)
-            mAudioRecorder = AudioRecorder.build(this.handler.cordova.getActivity(), file);
-        mAudioRecorder.start(new AudioRecorder.OnStartListener() {
+    private void start() {
+        Log.d(LOG_TAG, audioFile);
+        if (!mAudioRecorder.isRecording())
+        this.mAudioRecorder.start(new AudioRecorder.OnStartListener() {
             @Override
             public void onStarted() {
+                Log.d(LOG_TAG, "Start on Started");
             }
 
             @Override
@@ -158,11 +165,12 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
     }
 
     private void pause() {
-        if (mAudioRecorder != null)
-        mAudioRecorder.pause(new AudioRecorder.OnPauseListener() {
+        if (this.mAudioRecorder != null)
+        this.mAudioRecorder.pause(new AudioRecorder.OnPauseListener() {
             @Override
             public void onPaused(String activeRecordFileName) {
                 mActiveRecordFileName = activeRecordFileName;
+                Log.d(LOG_TAG, mActiveRecordFileName);
             }
 
             @Override
@@ -172,21 +180,21 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
     }
 
     public void resumeRecording(){
-        start(this.audioFile);
-        this.setState(STATE.MEDIA_STARTING);
+        this.start();
+        this.setState(STATE.MEDIA_STOPPED);
     }
 
     public void pauseRecording(){
-        pause();
+        this.pause();
         this.setState(STATE.MEDIA_PAUSED);
     }
     /**
      * Stop recording and save to the file specified when recording started.
      */
     public void stopRecording() {
-        if(null != mAudioRecorder){
-            mAudioRecorder = null;
-            this.setState(STATE.MEDIA_STOPPED);
+        if(null != this.mAudioRecorder){
+            if (mAudioRecorder.isRecording())
+                pause();
         }
     }
     //==========================================================================
@@ -215,7 +223,7 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
         if (this.readyPlayer(this.audioFile)) {
             this.player.seekTo(milliseconds);
             Log.d(LOG_TAG, "Send a onStatus update for the new seek");
-            sendStatusChange(MEDIA_POSITION, null, (milliseconds / 1000.0f));
+            this.sendStatusChange(MEDIA_POSITION, null, (milliseconds / 1000.0f));
         }
         else {
             this.seekOnPrepared = milliseconds;
@@ -272,7 +280,7 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
     public long getCurrentPosition() {
         if ((this.state == STATE.MEDIA_RUNNING) || (this.state == STATE.MEDIA_PAUSED)) {
             int curPos = this.player.getCurrentPosition();
-            sendStatusChange(MEDIA_POSITION, null, (curPos / 1000.0f));
+            this.sendStatusChange(MEDIA_POSITION, null, (curPos / 1000.0f));
             return curPos;
         }
         else {
@@ -351,7 +359,7 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
         this.prepareOnly = true;
 
         // Send status notification to JavaScript
-        sendStatusChange(MEDIA_DURATION, null, this.duration);
+        this.sendStatusChange(MEDIA_DURATION, null, this.duration);
     }
 
     /**
@@ -390,7 +398,7 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
      */
     private void setState(STATE state) {
         if (this.state != state) {
-            sendStatusChange(MEDIA_STATE, null, (float)state.ordinal());
+            this.sendStatusChange(MEDIA_STATE, null, (float)state.ordinal());
         }
         this.state = state;
     }
@@ -542,7 +550,7 @@ public class AudioPlayer implements MediaPlayer.OnCompletionListener, MediaPlaye
     }
 
     private void sendErrorStatus(int errorCode) {
-        sendStatusChange(MEDIA_ERROR, errorCode, null);
+        this.sendStatusChange(MEDIA_ERROR, errorCode, null);
     }
 
     private void sendStatusChange(int messageType, Integer additionalCode, Float value) {

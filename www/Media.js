@@ -38,7 +38,7 @@ var mediaObjects = {};
  *                                  statusCallback(int statusCode) - OPTIONAL
  */
 var Media = function(src, successCallback, errorCallback, statusCallback) {
-    argscheck.checkArgs('sFFF', 'Media', arguments);
+    argscheck.checkArgs('SFFF', 'Media', arguments);
     this.id = utils.createUUID();
     mediaObjects[this.id] = this;
     this.src = src;
@@ -137,6 +137,19 @@ Media.prototype.startRecord = function() {
 Media.prototype.stopRecord = function() {
     exec(null, this.errorCallback, "Media", "stopRecordingAudio", [this.id]);
 };
+/**
+ * Pause recording audio file.
+ */
+Media.prototype.pauseRecord = function() {
+    exec(null, this.errorCallback, "Media", "pauseRecordingAudio", [this.id]);
+};
+
+/**
+ * Resume recording audio file.
+ */
+Media.prototype.resumeRecord = function() {
+    exec(null, this.errorCallback, "Media", "resumeRecordingAudio", [this.id]);
+};
 
 /**
  * Pause recording audio file.
@@ -216,7 +229,7 @@ function onMessageFromNative(msg) {
     }
 }
 
-if (cordova.platformId === 'android' || cordova.platformId === 'amazon-fireos' || cordova.platformId === 'windowsphone') {
+if (cordova.platformId === 'android' || cordova.platformId === 'amazon-fireos') {
 
     var channel = require('cordova/channel');
 

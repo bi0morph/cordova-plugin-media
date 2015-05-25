@@ -24,7 +24,7 @@
 #define HTTP_SCHEME_PREFIX @"http://"
 #define HTTPS_SCHEME_PREFIX @"https://"
 #define CDVFILE_PREFIX @"cdvfile://"
-#define RECORDING_M4A @"m4a"
+#define RECORDING_WAV @"m4a"
 
 @implementation CDVSound
 
@@ -525,16 +525,16 @@
                 }
             }
 
-            NSDictionary *recordSettings = @{AVEncoderAudioQualityKey: @(AVAudioQualityMedium),
-                                                                            AVFormatIDKey: @(kAudioFormatMPEG4AAC),
-                                                                            AVEncoderBitRateKey: @(128000),
-                                                                            AVNumberOfChannelsKey: @(1),
-                                                                            AVSampleRateKey: @(44100)};
-
+            NSDictionary *recordSettings = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                        [NSNumber numberWithInt: kAudioFormatMPEG4AAC], AVFormatIDKey,
+                                                        [NSNumber numberWithFloat:16000.0], AVSampleRateKey,
+                                                        [NSNumber numberWithInt: 1], AVNumberOfChannelsKey,
+                                                        nil];
 
             // create a new recorder for each start record
             audioFile.recorder = [[CDVAudioRecorder alloc] initWithURL:audioFile.resourceURL settings:recordSettings error:&error];
-            
+
+
             bool recordingSuccess = NO;
             if (error == nil) {
                 audioFile.recorder.delegate = self;
@@ -701,6 +701,7 @@
 
     [super onMemoryWarning];
 }
+
 
 - (void)dealloc
 {
